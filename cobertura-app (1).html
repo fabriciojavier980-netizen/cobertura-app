@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Consulta de cobertura</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.31/"></script>
+
+  <style>
+    :root {
+      --ink: #17211b;
+      --paper: #f6f4ee;
+      --signal: #2e6b4f;
+      --alert: #a3402c;
+      --line: #cfc9ba;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: "Söhne", "Helvetica Neue", Arial, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      height: 100%;
+    }
+
+    header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    header h1 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+
+    header p {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: #5b6a60;
+    }
+
+    #viewDiv {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    #status {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      z-index: 10;
+      max-width: 340px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      background: white;
+      border: 1px solid var(--line);
+      box-shadow: 0 6px 20px rgba(23, 33, 27, 0.12);
+      font-size: 14px;
+      line-height: 1.4;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+      transform: translateY(6px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #status.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    #status .label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    #status.covered { border-left: 4px solid var(--signal); }
+    #status.covered .label { color: var(--signal); }
+
+    #status.uncovered { border-left: 4px solid var(--alert); }
+    #status.uncovered .label { color: var(--alert); }
+
+    #status .coords {
+      font-size: 12px;
+      color: #7a7a70;
+      margin-top: 6px;
+    }
+
+    #hint {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(23, 33, 27, 0.82);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div>
+        <h1>Consulta de cobertura</h1>
+        <p>Haz clic en el mapa para verificar si el punto está dentro del área de cobertura.</p>
+      </div>
+    </header>
+    <div id="viewDiv">
+      <div id="hint">Haz clic en cualquier punto del mapa</div>
+      <div id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/config",
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/Graphic"
+    ], (esriConfig, Map, MapView, FeatureLayer, Graphic) => {
+
+      // ============================================================
+      // CONFIGURACIÓN — reemplaza estas dos URLs con las tuyas
+      // ============================================================
+
+      // 1) Capa de sectores (tu shapefile publicado desde ArcGIS Pro).
+      //    Capability requerida: Query (pública, solo lectura).
+      const SECTORES_URL =
+        "https://services7.arcgis.com/3fQpC2fltfN5m4Bc/arcgis/rest/services/Sectores_Potenciales_Actualizada/FeatureServer/0";
+
+      // 2) Capa de registros (tabla o capa de puntos donde se guarda cada clic).
+      //    Capability requerida: Create habilitado para público anónimo.
+      //    Query / Update / Delete deshabilitados para público — solo tú,
+      //    autenticado en tu cuenta de ArcGIS Online, puedes leer/editar estos datos.
+      const REGISTROS_URL =
+        "https://services7.arcgis.com/3fQpC2fltfN5m4Bc/arcgis/rest/services/Registros_Clics_Cobertura/FeatureServer/0";
+
+      // Vista inicial del mapa: ajusta a tu zona de cobertura
+      const CENTRO_INICIAL = [-78.4678, -0.1807]; // [lon, lat] — Quito por defecto
+      const ZOOM_INICIAL = 11;
+
+      // ============================================================
+
+      esriConfig.apiKey = ""; // opcional: tu API key de ArcGIS Location Platform si la usas
+
+      const sectoresLayer = new FeatureLayer({ url: SECTORES_URL, outFields: ["*"] });
+      const registrosLayer = new FeatureLayer({ url: REGISTROS_URL });
+
+      const map = new Map({
+        basemap: "gray-vector",
+        layers: [sectoresLayer]
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: CENTRO_INICIAL,
+        zoom: ZOOM_INICIAL
+      });
+
+      const statusEl = document.getElementById("status");
+      const hintEl = document.getElementById("hint");
+
+      let marker = null;
+
+      function mostrarEstado(cubierto, punto, atributos) {
+        statusEl.className = "show " + (cubierto ? "covered" : "uncovered");
+        const label = cubierto ? "Hay cobertura" : "No hay cobertura";
+        const detalle = cubierto && atributos
+          ? (atributos.NOMBRE || atributos.Name || atributos.SECTOR || "")
+          : "";
+
+        statusEl.innerHTML = `
+          <span class="label">${label}</span>
+          ${detalle ? `<span>Sector: ${detalle}</span>` : ""}
+          <div class="coords">Lat: ${punto.latitude.toFixed(6)}, Lon: ${punto.longitude.toFixed(6)}</div>
+        `;
+      }
+
+      async function verificarCobertura(mapPoint) {
+        const query = sectoresLayer.createQuery();
+        query.geometry = mapPoint;
+        query.spatialRelationship = "intersects";
+        query.returnGeometry = false;
+        query.outFields = ["*"];
+
+        const result = await sectoresLayer.queryFeatures(query);
+        const cubierto = result.features.length > 0;
+        const atributos = cubierto ? result.features[0].attributes : null;
+
+        mostrarEstado(cubierto, mapPoint, atributos);
+        registrarEvento(mapPoint, cubierto);
+      }
+
+      async function registrarEvento(mapPoint, cubierto) {
+        const nuevoRegistro = new Graphic({
+          geometry: mapPoint,
+          attributes: {
+            latitud: mapPoint.latitude,
+            longitud: mapPoint.longitude,
+            cobertura: cubierto ? 1 : 0,
+            fecha: Date.now()
+          }
+        });
+
+        try {
+          await registrosLayer.applyEdits({ addFeatures: [nuevoRegistro] });
+        } catch (err) {
+          // Si falla el registro, no interrumpe la experiencia del usuario;
+          // solo lo dejamos en consola para diagnóstico.
+          console.error("No se pudo registrar el evento:", err);
+        }
+      }
+
+      view.on("click", (event) => {
+        event.stopPropagation();
+        hintEl.style.display = "none";
+
+        if (marker) view.graphics.remove(marker);
+        marker = new Graphic({
+          geometry: event.mapPoint,
+          symbol: {
+            type: "simple-marker",
+            color: [23, 33, 27],
+            size: 10,
+            outline: { color: "white", width: 1.5 }
+          }
+        });
+        view.graphics.add(marker);
+
+        verificarCobertura(event.mapPoint);
+      });
+    });
+  </script>
+</body>
+</html>
