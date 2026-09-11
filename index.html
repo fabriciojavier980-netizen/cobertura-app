@@ -143,6 +143,71 @@
       border-radius: 20px;
       font-size: 13px;
     }
+
+    #cedulaGate {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(23, 33, 27, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    #cedulaGate.hidden {
+      display: none;
+    }
+
+    #cedulaCard {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%;
+      max-width: 360px;
+      box-shadow: 0 12px 40px rgba(23, 33, 27, 0.25);
+    }
+
+    #cedulaCard h2 {
+      margin: 0 0 6px;
+      font-size: 17px;
+    }
+
+    #cedulaCard p {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: #5b6a60;
+    }
+
+    #cedulaInput {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 15px;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+
+    #cedulaError {
+      color: var(--alert);
+      font-size: 12px;
+      min-height: 16px;
+      margin-bottom: 8px;
+    }
+
+    #cedulaSubmit {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: var(--ink);
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -163,6 +228,16 @@
     <div id="viewDiv">
       <div id="hint">Haz clic en cualquier punto del mapa</div>
       <div id="status"></div>
+    </div>
+  </div>
+
+  <div id="cedulaGate">
+    <div id="cedulaCard">
+      <h2>Antes de continuar</h2>
+      <p>Ingresa tu número de cédula para consultar la cobertura.</p>
+      <input id="cedulaInput" type="tel" inputmode="numeric" maxlength="10" placeholder="Ej: 1712345678" autofocus />
+      <div id="cedulaError"></div>
+      <button id="cedulaSubmit" type="button">Continuar</button>
     </div>
   </div>
 
@@ -219,16 +294,19 @@
       const hintEl = document.getElementById("hint");
 
       let marker = null;
+      let cedulaActual = null;
 
       function mostrarEstado(cubierto, punto, atributos) {
         statusEl.className = "show " + (cubierto ? "covered" : "uncovered");
         const label = cubierto ? "Hay cobertura" : "No hay cobertura";
+        const zona = cubierto && atributos ? (atributos.ZONA_SECTO || "") : "";
         const detalle = cubierto && atributos
           ? (atributos.NOMBRE || atributos.Name || atributos.SECTOR || "")
           : "";
 
         statusEl.innerHTML = `
           <span class="label">${label}</span>
+          ${zona ? `<span>Zona/Sector: ${zona}</span><br/>` : ""}
           ${detalle ? `<span>Sector: ${detalle}</span>` : ""}
           <div class="coords">Lat: ${punto.latitude.toFixed(6)}, Lon: ${punto.longitude.toFixed(6)}</div>
         `;
@@ -256,6 +334,7 @@
             latitud: mapPoint.latitude,
             longitud: mapPoint.longitude,
             cobertura: cubierto ? 1 : 0,
+            cedula: cedulaActual || "",
             fecha: Date.now()
           }
         });
@@ -342,18 +421,46 @@
         );
       }
 
-      locateBtn.addEventListener("click", () => usarMiUbicacion(false));
-
-      // Intenta obtener la ubicación automáticamente al abrir la app.
-      // Si el usuario no ha dado permiso todavía, el navegador se lo pedirá;
-      // si lo rechaza, simplemente puede usar el botón o hacer clic en el mapa.
-      view.when(() => {
-        usarMiUbicacion(true);
+      locateBtn.addEventListener("click", () => {
+        if (!cedulaActual) return;
+        usarMiUbicacion(false);
       });
 
       view.on("click", (event) => {
         event.stopPropagation();
+        if (!cedulaActual) return; // no se procesa nada hasta ingresar la cédula
         ubicarYVerificar(event.mapPoint, false);
+      });
+
+      // ============================================================
+      // Formulario de cédula: bloquea el uso de la app hasta que
+      // la persona ingrese un número de cédula válido.
+      // ============================================================
+      const cedulaGate = document.getElementById("cedulaGate");
+      const cedulaInput = document.getElementById("cedulaInput");
+      const cedulaError = document.getElementById("cedulaError");
+      const cedulaSubmit = document.getElementById("cedulaSubmit");
+
+      function validarCedula(valor) {
+        return /^\d{10}$/.test(valor);
+      }
+
+      function confirmarCedula() {
+        const valor = cedulaInput.value.trim();
+        if (!validarCedula(valor)) {
+          cedulaError.textContent = "Ingresa un número de cédula válido (10 dígitos).";
+          return;
+        }
+        cedulaActual = valor;
+        cedulaGate.classList.add("hidden");
+
+        // Ya con la cédula confirmada, intenta ubicar automáticamente.
+        usarMiUbicacion(true);
+      }
+
+      cedulaSubmit.addEventListener("click", confirmarCedula);
+      cedulaInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") confirmarCedula();
       });
     });
   </script>
