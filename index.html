@@ -271,9 +271,13 @@
       const CENTRO_INICIAL = [-78.4678, -0.1807]; // [lon, lat] — Quito por defecto
       const ZOOM_INICIAL = 11;
 
-      // ============================================================
+      // 3) Servicio de geocodificación inversa GRATUITO (Nominatim / OpenStreetMap):
+      //    convierte la coordenada en una dirección legible, sin necesitar API key.
+      //    Esto solo se guarda en TU capa de registros, nunca se muestra al usuario en la app.
+      //    Límite de uso: máx. 1 solicitud por segundo (política de Nominatim).
+      const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
 
-      esriConfig.apiKey = ""; // opcional: tu API key de ArcGIS Location Platform si la usas
+      // ============================================================
 
       const sectoresLayer = new FeatureLayer({ url: SECTORES_URL, outFields: ["*"] });
       const registrosLayer = new FeatureLayer({ url: REGISTROS_URL });
@@ -322,12 +326,35 @@
         const result = await sectoresLayer.queryFeatures(query);
         const cubierto = result.features.length > 0;
         const atributos = cubierto ? result.features[0].attributes : null;
+        const zonaSecto = atributos ? (atributos.ZONA_SECTO || "") : "";
 
         mostrarEstado(cubierto, mapPoint, atributos);
-        registrarEvento(mapPoint, cubierto);
+        registrarEvento(mapPoint, cubierto, zonaSecto);
       }
 
-      async function registrarEvento(mapPoint, cubierto) {
+      async function obtenerDireccion(mapPoint) {
+        try {
+          const url = `${GEOCODE_URL}?format=jsonv2&lat=${mapPoint.latitude}&lon=${mapPoint.longitude}&zoom=18&addressdetails=1`;
+          const resp = await fetch(url, {
+            headers: {
+              // Nominatim pide identificar la app que hace las solicitudes.
+              "Accept-Language": "es"
+            }
+          });
+          if (!resp.ok) return "";
+          const data = await resp.json();
+          return data.display_name || "";
+        } catch (err) {
+          // Si falla (sin conexión, límite de uso excedido, etc.) simplemente
+          // no se guarda dirección; no afecta al usuario.
+          console.error("No se pudo obtener la dirección:", err);
+          return "";
+        }
+      }
+
+      async function registrarEvento(mapPoint, cubierto, zonaSecto) {
+        const direccion = await obtenerDireccion(mapPoint);
+
         const nuevoRegistro = new Graphic({
           geometry: mapPoint,
           attributes: {
@@ -335,6 +362,8 @@
             longitud: mapPoint.longitude,
             cobertura: cubierto ? 1 : 0,
             cedula: cedulaActual || "",
+            zona_secto: zonaSecto || "",
+            direccion: direccion,
             fecha: Date.now()
           }
         });
