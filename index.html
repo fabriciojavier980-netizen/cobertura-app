@@ -1,497 +1,523 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>Consulta de cobertura</title>
-
-  <link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/light/main.css" />
-  <script src="https://js.arcgis.com/4.31/"></script>
-
-  <style>
-    :root {
-      --ink: #17211b;
-      --paper: #f6f4ee;
-      --signal: #2e6b4f;
-      --alert: #a3402c;
-      --line: #cfc9ba;
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      height: 100%;
-      font-family: "Söhne", "Helvetica Neue", Arial, sans-serif;
-      background: var(--paper);
-      color: var(--ink);
-    }
-
-    #app {
-      display: grid;
-      grid-template-rows: auto 1fr;
-      height: 100%;
-    }
-
-    header {
-      padding: 18px 24px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    #locateBtn {
-      flex-shrink: 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-radius: 8px;
-      border: none;
-      background: var(--ink);
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-
-    #locateBtn:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-
-    #locateBtn svg {
-      width: 16px;
-      height: 16px;
-      flex-shrink: 0;
-    }
-
-    header h1 {
-      font-size: 17px;
-      font-weight: 600;
-      margin: 0;
-      letter-spacing: -0.01em;
-    }
-
-    header p {
-      margin: 2px 0 0;
-      font-size: 13px;
-      color: #5b6a60;
-    }
-
-    #viewDiv {
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-
-    #status {
-      position: absolute;
-      left: 16px;
-      bottom: 16px;
-      z-index: 10;
-      max-width: 340px;
-      padding: 14px 16px;
-      border-radius: 10px;
-      background: white;
-      border: 1px solid var(--line);
-      box-shadow: 0 6px 20px rgba(23, 33, 27, 0.12);
-      font-size: 14px;
-      line-height: 1.4;
-      transition: transform 0.18s ease, opacity 0.18s ease;
-      transform: translateY(6px);
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    #status.show {
-      transform: translateY(0);
-      opacity: 1;
-    }
-
-    #status .label {
-      font-weight: 600;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    #status.covered { border-left: 4px solid var(--signal); }
-    #status.covered .label { color: var(--signal); }
-
-    #status.uncovered { border-left: 4px solid var(--alert); }
-    #status.uncovered .label { color: var(--alert); }
-
-    #status .coords {
-      font-size: 12px;
-      color: #7a7a70;
-      margin-top: 6px;
-    }
-
-    #hint {
-      position: absolute;
-      top: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      background: rgba(23, 33, 27, 0.82);
-      color: white;
-      padding: 8px 14px;
-      border-radius: 20px;
-      font-size: 13px;
-    }
-
-    #cedulaGate {
-      position: fixed;
-      inset: 0;
-      z-index: 100;
-      background: rgba(23, 33, 27, 0.55);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
-    #cedulaGate.hidden {
-      display: none;
-    }
-
-    #cedulaCard {
-      background: white;
-      border-radius: 14px;
-      padding: 24px;
-      width: 100%;
-      max-width: 360px;
-      box-shadow: 0 12px 40px rgba(23, 33, 27, 0.25);
-    }
-
-    #cedulaCard h2 {
-      margin: 0 0 6px;
-      font-size: 17px;
-    }
-
-    #cedulaCard p {
-      margin: 0 0 16px;
-      font-size: 13px;
-      color: #5b6a60;
-    }
-
-    #cedulaInput {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      font-size: 15px;
-      font-family: inherit;
-      margin-bottom: 8px;
-    }
-
-    #cedulaError {
-      color: var(--alert);
-      font-size: 12px;
-      min-height: 16px;
-      margin-bottom: 8px;
-    }
-
-    #cedulaSubmit {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      background: var(--ink);
-      color: white;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Consulta de cobertura</title>
+<link rel="stylesheet" href="https://js.arcgis.com/4.31/esri/themes/light/main.css" />
+<script src="https://js.arcgis.com/4.31/"></script>
+<style>
+:root {
+  --ink: #17211b;
+  --paper: #f6f4ee;
+  --signal: #2e6b4f;
+  --alert: #a3402c;
+  --line: #cfc9ba;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: "Söhne", "Helvetica Neue", Arial, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+#locateBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--ink);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+#locateBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+#locateBtn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+header h1 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+header p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #5b6a60;
+}
+#viewDiv {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+#status {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 10;
+  max-width: 340px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: white;
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(23, 33, 27, 0.12);
+  font-size: 14px;
+  line-height: 1.4;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+  transform: translateY(6px);
+  opacity: 0;
+  pointer-events: none;
+}
+#status.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+#status .label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+#status.covered { border-left: 4px solid var(--signal); }
+#status.covered .label { color: var(--signal); }
+#status.uncovered { border-left: 4px solid var(--alert); }
+#status.uncovered .label { color: var(--alert); }
+#status .coords {
+  font-size: 12px;
+  color: #7a7a70;
+  margin-top: 6px;
+}
+#hint {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: rgba(23, 33, 27, 0.82);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+#cedulaGate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(23, 33, 27, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#cedulaGate.hidden {
+  display: none;
+}
+#cedulaCard {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 12px 40px rgba(23, 33, 27, 0.25);
+}
+#cedulaCard h2 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+#cedulaCard p {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #5b6a60;
+}
+#cedulaInput {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-family: inherit;
+  margin-bottom: 8px;
+}
+#cedulaError {
+  color: var(--alert);
+  font-size: 12px;
+  min-height: 16px;
+  margin-bottom: 8px;
+}
+#cedulaSubmit {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: var(--ink);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+</style>
 </head>
 <body>
-  <div id="app">
-    <header>
-      <div>
-        <h1>Consulta de cobertura</h1>
-        <p>Usa tu ubicación o haz clic en el mapa para verificar la cobertura.</p>
-      </div>
-      <button id="locateBtn" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
-        </svg>
-        <span id="locateBtnLabel">Usar mi ubicación</span>
-      </button>
-    </header>
-    <div id="viewDiv">
-      <div id="hint">Haz clic en cualquier punto del mapa</div>
-      <div id="status"></div>
+<div id="app">
+  <header>
+    <div>
+      <h1>Consulta de cobertura</h1>
+      <p>Usa tu ubicación o haz clic en el mapa para verificar la cobertura.</p>
     </div>
+    <button id="locateBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>
+      </svg>
+      <span id="locateBtnLabel">Usar mi ubicación</span>
+    </button>
+  </header>
+  <div id="viewDiv">
+    <div id="hint">Haz clic en cualquier punto del mapa</div>
+    <div id="status"></div>
   </div>
+</div>
 
-  <div id="cedulaGate">
-    <div id="cedulaCard">
-      <h2>Antes de continuar</h2>
-      <p>Ingresa tu número de cédula para consultar la cobertura.</p>
-      <input id="cedulaInput" type="tel" inputmode="numeric" maxlength="10" placeholder="Ej: 1712345678" autofocus />
-      <div id="cedulaError"></div>
-      <button id="cedulaSubmit" type="button">Continuar</button>
-    </div>
+<div id="cedulaGate">
+  <div id="cedulaCard">
+    <h2>Antes de continuar</h2>
+    <p>Ingresa tu número de cédula para consultar la cobertura.</p>
+    <input id="cedulaInput" type="tel" inputmode="numeric" maxlength="10" placeholder="Ej: 1712345678" autofocus />
+    <div id="cedulaError"></div>
+    <button id="cedulaSubmit" type="button">Continuar</button>
   </div>
+</div>
 
-  <script>
-    require([
-      "esri/config",
-      "esri/Map",
-      "esri/views/MapView",
-      "esri/layers/FeatureLayer",
-      "esri/Graphic",
-      "esri/geometry/Point"
-    ], (esriConfig, Map, MapView, FeatureLayer, Graphic, Point) => {
+<script>
+require([
+  "esri/config",
+  "esri/Map",
+  "esri/views/MapView",
+  "esri/layers/FeatureLayer",
+  "esri/Graphic",
+  "esri/geometry/Point"
+], (esriConfig, Map, MapView, FeatureLayer, Graphic, Point) => {
 
-      // ============================================================
-      // CONFIGURACIÓN — reemplaza estas dos URLs con las tuyas
-      // ============================================================
+  // ============================================================
+  // CONFIGURACIÓN — reemplaza estas dos URLs con las tuyas
+  // ============================================================
 
-      // 1) Capa de sectores (tu shapefile publicado desde ArcGIS Pro).
-      //    Capability requerida: Query (pública, solo lectura).
-      const SECTORES_URL =
-        "https://services7.arcgis.com/3fQpC2fltfN5m4Bc/arcgis/rest/services/Sectores_Potenciales_Actualizada/FeatureServer/0";
+  // 1) Capa de sectores (tu shapefile publicado desde ArcGIS Pro).
+  //    Capability requerida: Query (pública, solo lectura).
+  const SECTORES_URL =
+    "https://services7.arcgis.com/3fQpC2fltfN5m4Bc/arcgis/rest/services/Sectores_Potenciales_Actualizada/FeatureServer/0";
 
-      // 2) Capa de registros (tabla o capa de puntos donde se guarda cada clic).
-      //    Capability requerida: Create habilitado para público anónimo.
-      //    Query / Update / Delete deshabilitados para público — solo tú,
-      //    autenticado en tu cuenta de ArcGIS Online, puedes leer/editar estos datos.
-      const REGISTROS_URL =
-        "https://services7.arcgis.com/3fQpC2fltfN5m4Bc/arcgis/rest/services/Registros_Clics_Cobertura/FeatureServer/0";
+  // 2) Capa de registros (tabla o capa de puntos donde se guarda cada clic).
+  //    Capability requerida: Create habilitado para público anónimo,
+  //    y Query (pública, solo lectura) para poder verificar la vigencia
+  //    de 18 días por número de cédula. Update / Delete deshabilitados
+  //    para público — solo tú, autenticado en tu cuenta de ArcGIS Online,
+  //    puedes editar estos datos.
+  const REGISTROS_URL =
+    "https://services7.arcgis.com/3fQpC2fltfN5m4Bc/arcgis/rest/services/Registros_Clics_Cobertura/FeatureServer/0";
 
-      // Vista inicial del mapa: ajusta a tu zona de cobertura
-      const CENTRO_INICIAL = [-78.4678, -0.1807]; // [lon, lat] — Quito por defecto
-      const ZOOM_INICIAL = 11;
+  // Vista inicial del mapa: ajusta a tu zona de cobertura
+  const CENTRO_INICIAL = [-78.4678, -0.1807]; // [lon, lat] — Quito por defecto
+  const ZOOM_INICIAL = 11;
 
-      // 3) Servicio de geocodificación inversa GRATUITO (Nominatim / OpenStreetMap):
-      //    convierte la coordenada en una dirección legible, sin necesitar API key.
-      //    Esto solo se guarda en TU capa de registros, nunca se muestra al usuario en la app.
-      //    Límite de uso: máx. 1 solicitud por segundo (política de Nominatim).
-      const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
+  // 3) Servicio de geocodificación inversa GRATUITO (Nominatim / OpenStreetMap):
+  //    convierte la coordenada en una dirección legible, sin necesitar API key.
+  //    Esto solo se guarda en TU capa de registros, nunca se muestra al usuario en la app.
+  //    Límite de uso: máx. 1 solicitud por segundo (política de Nominatim).
+  const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
 
-      // ============================================================
+  // Vigencia de una consulta por cédula, en días.
+  const DIAS_VIGENCIA = 18;
+  const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
-      const sectoresLayer = new FeatureLayer({ url: SECTORES_URL, outFields: ["*"] });
-      const registrosLayer = new FeatureLayer({ url: REGISTROS_URL });
+  // ============================================================
 
-      const map = new Map({
-        basemap: "gray-vector",
-        layers: [sectoresLayer]
-      });
+  const sectoresLayer = new FeatureLayer({ url: SECTORES_URL, outFields: ["*"] });
+  const registrosLayer = new FeatureLayer({ url: REGISTROS_URL });
 
-      const view = new MapView({
-        container: "viewDiv",
-        map: map,
-        center: CENTRO_INICIAL,
-        zoom: ZOOM_INICIAL
-      });
+  const map = new Map({
+    basemap: "gray-vector",
+    layers: [sectoresLayer]
+  });
 
-      const statusEl = document.getElementById("status");
-      const hintEl = document.getElementById("hint");
+  const view = new MapView({
+    container: "viewDiv",
+    map: map,
+    center: CENTRO_INICIAL,
+    zoom: ZOOM_INICIAL
+  });
 
-      let marker = null;
-      let cedulaActual = null;
+  const statusEl = document.getElementById("status");
+  const hintEl = document.getElementById("hint");
+  let marker = null;
+  let cedulaActual = null;
 
-      function mostrarEstado(cubierto, punto, atributos) {
-        statusEl.className = "show " + (cubierto ? "covered" : "uncovered");
-        const label = cubierto ? "Hay cobertura" : "No hay cobertura";
-        const zona = cubierto && atributos ? (atributos.ZONA_SECTO || "") : "";
-        const detalle = cubierto && atributos
-          ? (atributos.NOMBRE || atributos.Name || atributos.SECTOR || "")
-          : "";
+  function mostrarEstado(cubierto, punto, atributos) {
+    statusEl.className = "show " + (cubierto ? "covered" : "uncovered");
+    const label = cubierto ? "Hay cobertura" : "No hay cobertura";
+    const zona = cubierto && atributos ? (atributos.ZONA_SECTO || "") : "";
+    const detalle = cubierto && atributos
+      ? (atributos.NOMBRE || atributos.Name || atributos.SECTOR || "")
+      : "";
+    statusEl.innerHTML = `
+      <span class="label">${label}</span>
+      ${zona ? `<span>Zona/Sector: ${zona}</span><br/>` : ""}
+      ${detalle ? `<span>Sector: ${detalle}</span>` : ""}
+      <div class="coords">Lat: ${punto.latitude.toFixed(6)}, Lon: ${punto.longitude.toFixed(6)}</div>
+    `;
+  }
 
-        statusEl.innerHTML = `
-          <span class="label">${label}</span>
-          ${zona ? `<span>Zona/Sector: ${zona}</span><br/>` : ""}
-          ${detalle ? `<span>Sector: ${detalle}</span>` : ""}
-          <div class="coords">Lat: ${punto.latitude.toFixed(6)}, Lon: ${punto.longitude.toFixed(6)}</div>
-        `;
-      }
+  async function verificarCobertura(mapPoint) {
+    const query = sectoresLayer.createQuery();
+    query.geometry = mapPoint;
+    query.spatialRelationship = "intersects";
+    query.returnGeometry = false;
+    query.outFields = ["*"];
 
-      async function verificarCobertura(mapPoint) {
-        const query = sectoresLayer.createQuery();
-        query.geometry = mapPoint;
-        query.spatialRelationship = "intersects";
-        query.returnGeometry = false;
-        query.outFields = ["*"];
+    const result = await sectoresLayer.queryFeatures(query);
+    const cubierto = result.features.length > 0;
+    const atributos = cubierto ? result.features[0].attributes : null;
+    const zonaSecto = atributos ? (atributos.ZONA_SECTO || "") : "";
 
-        const result = await sectoresLayer.queryFeatures(query);
-        const cubierto = result.features.length > 0;
-        const atributos = cubierto ? result.features[0].attributes : null;
-        const zonaSecto = atributos ? (atributos.ZONA_SECTO || "") : "";
+    mostrarEstado(cubierto, mapPoint, atributos);
+    registrarEvento(mapPoint, cubierto, zonaSecto);
+  }
 
-        mostrarEstado(cubierto, mapPoint, atributos);
-        registrarEvento(mapPoint, cubierto, zonaSecto);
-      }
-
-      async function obtenerDireccion(mapPoint) {
-        try {
-          const url = `${GEOCODE_URL}?format=jsonv2&lat=${mapPoint.latitude}&lon=${mapPoint.longitude}&zoom=18&addressdetails=1`;
-          const resp = await fetch(url, {
-            headers: {
-              // Nominatim pide identificar la app que hace las solicitudes.
-              "Accept-Language": "es"
-            }
-          });
-          if (!resp.ok) return "";
-          const data = await resp.json();
-          return data.display_name || "";
-        } catch (err) {
-          // Si falla (sin conexión, límite de uso excedido, etc.) simplemente
-          // no se guarda dirección; no afecta al usuario.
-          console.error("No se pudo obtener la dirección:", err);
-          return "";
+  async function obtenerDireccion(mapPoint) {
+    try {
+      const url = `${GEOCODE_URL}?format=jsonv2&lat=${mapPoint.latitude}&lon=${mapPoint.longitude}&zoom=18&addressdetails=1`;
+      const resp = await fetch(url, {
+        headers: {
+          // Nominatim pide identificar la app que hace las solicitudes.
+          "Accept-Language": "es"
         }
-      }
-
-      async function registrarEvento(mapPoint, cubierto, zonaSecto) {
-        const direccion = await obtenerDireccion(mapPoint);
-
-        const nuevoRegistro = new Graphic({
-          geometry: mapPoint,
-          attributes: {
-            latitud: mapPoint.latitude,
-            longitud: mapPoint.longitude,
-            cobertura: cubierto ? 1 : 0,
-            cedula: cedulaActual || "",
-            zona_secto: zonaSecto || "",
-            direccion: direccion,
-            fecha: Date.now()
-          }
-        });
-
-        try {
-          await registrosLayer.applyEdits({ addFeatures: [nuevoRegistro] });
-        } catch (err) {
-          // Si falla el registro, no interrumpe la experiencia del usuario;
-          // solo lo dejamos en consola para diagnóstico.
-          console.error("No se pudo registrar el evento:", err);
-        }
-      }
-
-      function ubicarYVerificar(mapPoint, zoomAlPunto) {
-        hintEl.style.display = "none";
-
-        if (marker) view.graphics.remove(marker);
-        marker = new Graphic({
-          geometry: mapPoint,
-          symbol: {
-            type: "simple-marker",
-            color: [23, 33, 27],
-            size: 10,
-            outline: { color: "white", width: 1.5 }
-          }
-        });
-        view.graphics.add(marker);
-
-        if (zoomAlPunto) {
-          view.goTo({ target: mapPoint, zoom: 15 });
-        }
-
-        verificarCobertura(mapPoint);
-      }
-
-      const locateBtn = document.getElementById("locateBtn");
-      const locateBtnLabel = document.getElementById("locateBtnLabel");
-
-      function usarMiUbicacion(esAutomatico) {
-        if (!navigator.geolocation) {
-          if (!esAutomatico) {
-            alert("Tu navegador no soporta geolocalización. Usa el clic en el mapa.");
-          }
-          return;
-        }
-
-        locateBtn.disabled = true;
-        locateBtnLabel.textContent = "Ubicando...";
-
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            locateBtn.disabled = false;
-            locateBtnLabel.textContent = "Usar mi ubicación";
-
-            const mapPoint = new Point({
-              longitude: position.coords.longitude,
-              latitude: position.coords.latitude,
-              spatialReference: view.spatialReference
-            });
-
-            ubicarYVerificar(mapPoint, true);
-          },
-          (error) => {
-            locateBtn.disabled = false;
-            locateBtnLabel.textContent = "Usar mi ubicación";
-
-            // Si fue el intento automático al cargar la página, no interrumpimos
-            // con una alerta; el usuario siempre puede tocar el botón o el mapa.
-            if (!esAutomatico) {
-              let mensaje = "No se pudo obtener tu ubicación.";
-              if (error.code === error.PERMISSION_DENIED) {
-                mensaje = "Debes permitir el acceso a tu ubicación para usar esta opción.";
-              } else if (error.code === error.TIMEOUT) {
-                mensaje = "Se agotó el tiempo esperando tu ubicación. Intenta de nuevo.";
-              }
-              alert(mensaje);
-            }
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
-          }
-        );
-      }
-
-      locateBtn.addEventListener("click", () => {
-        if (!cedulaActual) return;
-        usarMiUbicacion(false);
       });
+      if (!resp.ok) return "";
+      const data = await resp.json();
+      return data.display_name || "";
+    } catch (err) {
+      // Si falla (sin conexión, límite de uso excedido, etc.) simplemente
+      // no se guarda dirección; no afecta al usuario.
+      console.error("No se pudo obtener la dirección:", err);
+      return "";
+    }
+  }
 
-      view.on("click", (event) => {
-        event.stopPropagation();
-        if (!cedulaActual) return; // no se procesa nada hasta ingresar la cédula
-        ubicarYVerificar(event.mapPoint, false);
-      });
-
-      // ============================================================
-      // Formulario de cédula: bloquea el uso de la app hasta que
-      // la persona ingrese un número de cédula válido.
-      // ============================================================
-      const cedulaGate = document.getElementById("cedulaGate");
-      const cedulaInput = document.getElementById("cedulaInput");
-      const cedulaError = document.getElementById("cedulaError");
-      const cedulaSubmit = document.getElementById("cedulaSubmit");
-
-      function validarCedula(valor) {
-        return /^\d{10}$/.test(valor);
+  async function registrarEvento(mapPoint, cubierto, zonaSecto) {
+    const direccion = await obtenerDireccion(mapPoint);
+    const nuevoRegistro = new Graphic({
+      geometry: mapPoint,
+      attributes: {
+        latitud: mapPoint.latitude,
+        longitud: mapPoint.longitude,
+        cobertura: cubierto ? 1 : 0,
+        cedula: cedulaActual || "",
+        zona_secto: zonaSecto || "",
+        direccion: direccion,
+        fecha: Date.now()
       }
-
-      function confirmarCedula() {
-        const valor = cedulaInput.value.trim();
-        if (!validarCedula(valor)) {
-          cedulaError.textContent = "Ingresa un número de cédula válido (10 dígitos).";
-          return;
-        }
-        cedulaActual = valor;
-        cedulaGate.classList.add("hidden");
-
-        // Ya con la cédula confirmada, intenta ubicar automáticamente.
-        usarMiUbicacion(true);
-      }
-
-      cedulaSubmit.addEventListener("click", confirmarCedula);
-      cedulaInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") confirmarCedula();
-      });
     });
-  </script>
+
+    try {
+      await registrosLayer.applyEdits({ addFeatures: [nuevoRegistro] });
+    } catch (err) {
+      // Si falla el registro, no interrumpe la experiencia del usuario;
+      // solo lo dejamos en consola para diagnóstico.
+      console.error("No se pudo registrar el evento:", err);
+    }
+  }
+
+  function ubicarYVerificar(mapPoint, zoomAlPunto) {
+    hintEl.style.display = "none";
+    if (marker) view.graphics.remove(marker);
+
+    marker = new Graphic({
+      geometry: mapPoint,
+      symbol: {
+        type: "simple-marker",
+        color: [23, 33, 27],
+        size: 10,
+        outline: { color: "white", width: 1.5 }
+      }
+    });
+    view.graphics.add(marker);
+
+    if (zoomAlPunto) {
+      view.goTo({ target: mapPoint, zoom: 15 });
+    }
+
+    verificarCobertura(mapPoint);
+  }
+
+  const locateBtn = document.getElementById("locateBtn");
+  const locateBtnLabel = document.getElementById("locateBtnLabel");
+
+  function usarMiUbicacion(esAutomatico) {
+    if (!navigator.geolocation) {
+      if (!esAutomatico) {
+        alert("Tu navegador no soporta geolocalización. Usa el clic en el mapa.");
+      }
+      return;
+    }
+
+    locateBtn.disabled = true;
+    locateBtnLabel.textContent = "Ubicando...";
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        locateBtn.disabled = false;
+        locateBtnLabel.textContent = "Usar mi ubicación";
+        const mapPoint = new Point({
+          longitude: position.coords.longitude,
+          latitude: position.coords.latitude,
+          spatialReference: view.spatialReference
+        });
+        ubicarYVerificar(mapPoint, true);
+      },
+      (error) => {
+        locateBtn.disabled = false;
+        locateBtnLabel.textContent = "Usar mi ubicación";
+        // Si fue el intento automático al cargar la página, no interrumpimos
+        // con una alerta; el usuario siempre puede tocar el botón o el mapa.
+        if (!esAutomatico) {
+          let mensaje = "No se pudo obtener tu ubicación.";
+          if (error.code === error.PERMISSION_DENIED) {
+            mensaje = "Debes permitir el acceso a tu ubicación para usar esta opción.";
+          } else if (error.code === error.TIMEOUT) {
+            mensaje = "Se agotó el tiempo esperando tu ubicación. Intenta de nuevo.";
+          }
+          alert(mensaje);
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  }
+
+  locateBtn.addEventListener("click", () => {
+    if (!cedulaActual) return;
+    usarMiUbicacion(false);
+  });
+
+  view.on("click", (event) => {
+    event.stopPropagation();
+    if (!cedulaActual) return; // no se procesa nada hasta ingresar la cédula
+    ubicarYVerificar(event.mapPoint, false);
+  });
+
+  // ============================================================
+  // Formulario de cédula: bloquea el uso de la app hasta que
+  // la persona ingrese un número de cédula válido.
+  // ============================================================
+
+  const cedulaGate = document.getElementById("cedulaGate");
+  const cedulaInput = document.getElementById("cedulaInput");
+  const cedulaError = document.getElementById("cedulaError");
+  const cedulaSubmit = document.getElementById("cedulaSubmit");
+
+  function validarCedula(valor) {
+    return /^\d{10}$/.test(valor);
+  }
+
+  function formatearFecha(timestamp) {
+    return new Date(timestamp).toLocaleDateString("es-EC", {
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    });
+  }
+
+  // Busca el registro más reciente de esta cédula en la capa de registros.
+  // Si existe uno dentro de los últimos DIAS_VIGENCIA, devuelve la fecha
+  // (timestamp) en la que expira la vigencia. Si no hay registro vigente,
+  // devuelve null.
+  async function obtenerVigencia(cedula) {
+    const query = registrosLayer.createQuery();
+    query.where = `cedula = '${cedula}'`;
+    query.outFields = ["fecha"];
+    query.orderByFields = ["fecha DESC"];
+    query.num = 1;
+    query.returnGeometry = false;
+
+    const result = await registrosLayer.queryFeatures(query);
+    if (result.features.length === 0) return null;
+
+    const ultimaFecha = result.features[0].attributes.fecha;
+    const vigenciaHasta = ultimaFecha + DIAS_VIGENCIA * MS_POR_DIA;
+    return Date.now() < vigenciaHasta ? vigenciaHasta : null;
+  }
+
+  async function confirmarCedula() {
+    const valor = cedulaInput.value.trim();
+    if (!validarCedula(valor)) {
+      cedulaError.textContent = "Ingresa un número de cédula válido (10 dígitos).";
+      return;
+    }
+
+    cedulaError.textContent = "";
+    cedulaSubmit.disabled = true;
+    cedulaSubmit.textContent = "Verificando...";
+
+    try {
+      const vigenciaHasta = await obtenerVigencia(valor);
+      if (vigenciaHasta) {
+        cedulaError.textContent =
+          `Ya tienes una consulta vigente hasta el ${formatearFecha(vigenciaHasta)}. ` +
+          `Vuelve a intentarlo después de esa fecha.`;
+        cedulaSubmit.disabled = false;
+        cedulaSubmit.textContent = "Continuar";
+        return; // bloquea: no se abre el mapa
+      }
+    } catch (err) {
+      // Si la consulta de vigencia falla (p. ej. el Query público aún no está
+      // habilitado en la capa de registros), no bloqueamos al usuario; solo
+      // lo registramos en consola para diagnóstico.
+      console.error("No se pudo verificar la vigencia de la cédula:", err);
+    }
+
+    cedulaActual = valor;
+    cedulaGate.classList.add("hidden");
+    cedulaSubmit.disabled = false;
+    cedulaSubmit.textContent = "Continuar";
+
+    // Ya con la cédula confirmada, intenta ubicar automáticamente.
+    usarMiUbicacion(true);
+  }
+
+  cedulaSubmit.addEventListener("click", confirmarCedula);
+  cedulaInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") confirmarCedula();
+  });
+});
+</script>
 </body>
 </html>
